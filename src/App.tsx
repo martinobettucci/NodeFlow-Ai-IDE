@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import NodeEditor from './components/NodeEditor';
 import { APIKeyProvider } from './contexts/APIKeyContext';
+import { BackendProvider } from './contexts/BackendContext';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { createDefaultProject } from './utils/projectUtils';
@@ -56,19 +57,21 @@ function App() {
 
   return (
     <APIKeyProvider>
-      <ProjectProvider>
-        <Layout 
-          onOpenSettings={() => setShowSettings(true)}
-        >
-          <NodeEditor />
-          {showSettings && (
-            <SettingsModal 
-              initialTab="api_keys"
-              onClose={() => setShowSettings(false)} 
-            />
-          )}
-        </Layout>
-      </ProjectProvider>
+      <BackendProvider>
+        <ProjectProvider>
+          <Layout
+            onOpenSettings={() => setShowSettings(true)}
+          >
+            <NodeEditor />
+            {showSettings && (
+              <SettingsModal
+                initialTab="api_keys"
+                onClose={() => setShowSettings(false)}
+              />
+            )}
+          </Layout>
+        </ProjectProvider>
+      </BackendProvider>
     </APIKeyProvider>
   );
 }

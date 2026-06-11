@@ -10,7 +10,7 @@ interface NodeEditorDB extends DBSchema {
   };
   settings: {
     key: string;
-    value: UserSettings;
+    value: UserSettings & { id: string };
   };
 }
 

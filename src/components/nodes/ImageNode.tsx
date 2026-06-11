@@ -90,7 +90,7 @@ const ImageNode: React.FC<any> = ({ data, selected }) => {
       
       const imageInputs = connectedInputs.filter((input: any) => 
         input.category === 'image' && input.content && input.output.type === ConnectionType.IMAGE
-      ).map(input => input.content);
+      ).map((input: any) => input.content);
       
       // Check if we have any inputs at all
       if (connectedInputs.length === 0) {
@@ -314,13 +314,13 @@ const ImageNode: React.FC<any> = ({ data, selected }) => {
           <div className="flex justify-between">
             <button
               onClick={handleGenerateImage}
-              disabled={isGenerating || !openaiKey || !data.inputs.some(input => input.connected)}
+              disabled={isGenerating || !openaiKey || !data.inputs.some((input: any) => input.connected)}
               className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Sparkles className="w-3 h-3" />
               <span>
                 {isGenerating ? 'Generating...' : 
-                 !data.inputs.some(input => input.connected) ? 'Connect Input' : 
+                 !data.inputs.some((input: any) => input.connected) ? 'Connect Input' : 
                  'Generate'}
               </span>
             </button>

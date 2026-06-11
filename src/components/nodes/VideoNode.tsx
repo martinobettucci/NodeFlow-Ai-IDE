@@ -161,89 +161,52 @@ const VideoNode: React.FC<any> = ({ data, selected }) => {
       };
       
       if (videoInputs.length > 0) {
-        // Use video2video if we have a video input
+        // Use video2video if we have a video input; reuse the previously
+        // uploaded URL when the content hasn't changed
         const videoInput = videoInputs[0].content;
-        
-        // Check if we already have an uploaded URL for this content
-        if (data.uploaded_url && data.last_uploaded_content === videoInput) {
-          videoOptions.video_url = data.uploaded_url;
-          
-          generatedVideo = await generateVideo(
-            falaiKey, 
-            textPrompt, 
-            undefined, 
-            data.uploaded_url,
-            videoOptions
-          );
-        } else {
-          generatedVideo = await generateVideo(
-            falaiKey, 
-            textPrompt, 
-            undefined, 
-            videoInput,
-            videoOptions
-          );
-          
-          // Store the uploaded URL for future use
-          data.updateNodeData({
-            uploaded_url: generatedVideo.videoUrl,
-            last_uploaded_content: videoInput
-          });
-        }
+        const videoSource =
+          data.uploaded_url && data.last_uploaded_content === videoInput
+            ? data.uploaded_url
+            : videoInput;
+
+        generatedVideo = await generateVideo(
+          falaiKey,
+          textPrompt,
+          undefined,
+          videoSource,
+          videoOptions
+        );
       } else if (imageInputs.length > 0) {
         // Use img2video if we have an image input
         const imageInput = imageInputs[0].content;
-        
-        // Check if we already have an uploaded URL for this content
-        if (data.uploaded_url && data.last_uploaded_content === imageInput) {
-          generatedVideo = await generateVideo(
-            falaiKey, 
-            textPrompt, 
-            data.uploaded_url,
-            undefined,
-            videoOptions
-          );
-        } else {
-          generatedVideo = await generateVideo(
-            falaiKey, 
-            textPrompt, 
-            imageInput,
-            undefined,
-            videoOptions
-          );
-          
-          // Store the uploaded URL for future use
-          data.updateNodeData({
-            uploaded_url: generatedVideo.imageUrl,
-            last_uploaded_content: imageInput
-          });
-        }
+        const imageSource =
+          data.uploaded_url && data.last_uploaded_content === imageInput
+            ? data.uploaded_url
+            : imageInput;
+
+        generatedVideo = await generateVideo(
+          falaiKey,
+          textPrompt,
+          imageSource,
+          undefined,
+          videoOptions
+        );
       } else {
         // Use text2video if we have only text input
         generatedVideo = await generateVideo(
-          falaiKey, 
+          falaiKey,
           textPrompt,
           undefined,
           undefined,
           videoOptions
         );
       }
-      
+
       data.updateNodeData({
         content: generatedVideo,
         generationStatus: 'success',
-        generationSeed: generatedVideo.seed // Store the seed used for generation
+        generationSeed: data.settings?.seed,
       });
-      
-      // Update the seed setting if one was generated
-      if (generatedVideo.seed && !data.settings.seed) {
-        data.updateNodeData({
-          settings: {
-            ...data.settings,
-            seed: generatedVideo.seed
-          }
-        });
-      }
     } catch (error) {
       console.error('Failed to generate video:', error);
       data.updateNodeData({

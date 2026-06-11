@@ -1,6 +1,7 @@
 import { NodeType, NodeCategory, NodeMode, ConnectionType, Project, NodeData } from '../types';
 import { nanoid } from 'nanoid';
-import { saveProject, getProject } from '../services/dbService';
+import { saveProject } from '../services/dbService';
+import { BackendIOType, BackendNodeManifest } from '../services/nodeflow/types';
 
 // Create a default node of the specified type
 export function createNode(
@@ -11,7 +12,7 @@ export function createNode(
   const nodeCategory = type.split('_')[0] as NodeCategory;
   const nodeMode = type.split('_')[1] as NodeMode;
   
-  const inputs: { id: string; type: ConnectionType }[] = [];
+  const inputs: { id: string; type: ConnectionType; maxConnections?: number }[] = [];
   
   if (type === NodeType.TEXT_GENERATED) {
     // Generated text can take text input
@@ -42,8 +43,6 @@ export function createNode(
     output: {
       id: `${id}-out`,
       type: outputType,
-      width: 250,
-      height: 200,
     },
     settings: type === NodeType.IMAGE_GENERATED ? {
       model: 'dall-e-3',
@@ -52,6 +51,85 @@ export function createNode(
       style: 'vivid',
       moderation: 'auto'
     } : undefined,
+    generationStatus: 'idle',
+  };
+}
+
+// Map SDK IO types to IDE connection types
+export function connectionTypeForIOType(ioType: BackendIOType): ConnectionType {
+  switch (ioType) {
+    case BackendIOType.TEXT:
+      return ConnectionType.TEXT;
+    case BackendIOType.JSON:
+      return ConnectionType.JSON;
+    case BackendIOType.IMAGE:
+      return ConnectionType.IMAGE;
+    case BackendIOType.MASK:
+      return ConnectionType.MASK;
+    case BackendIOType.AUDIO:
+      return ConnectionType.AUDIO;
+    case BackendIOType.VIDEO:
+      return ConnectionType.VIDEO;
+    default:
+      return ConnectionType.TEXT;
+  }
+}
+
+// Create a node backed by a NodeFlow SDK backend, from its manifest
+export function createBackendNode(
+  backendId: string,
+  backendUrl: string,
+  manifest: BackendNodeManifest,
+  position: { x: number; y: number },
+): NodeData {
+  const id = nanoid();
+
+  const inputs = manifest.inputs.map((spec) => ({
+    id: `${id}-in-${spec.id}`,
+    type: connectionTypeForIOType(spec.type),
+    maxConnections: spec.multi ? Infinity : 1,
+    label: spec.label,
+    ioId: spec.id,
+  }));
+
+  const outputs = manifest.outputs.map((spec) => ({
+    id: `${id}-out-${spec.id}`,
+    type: connectionTypeForIOType(spec.type),
+    label: spec.label,
+    ioId: spec.id,
+  }));
+
+  const parameters: Record<string, unknown> = {};
+  manifest.parameters.forEach((param) => {
+    parameters[param.id] = param.default;
+  });
+
+  const primaryOutputType = outputs[0]?.type ?? ConnectionType.TEXT;
+  const category = (
+    [ConnectionType.TEXT, ConnectionType.IMAGE, ConnectionType.VIDEO, ConnectionType.MASK].includes(
+      primaryOutputType,
+    )
+      ? (primaryOutputType as string)
+      : NodeCategory.TEXT
+  ) as NodeCategory;
+
+  return {
+    id,
+    type: NodeType.BACKEND,
+    label: manifest.label,
+    category,
+    mode: NodeMode.GENERATED,
+    position,
+    inputs,
+    output: outputs[0] ?? { id: `${id}-out`, type: ConnectionType.TEXT },
+    outputs,
+    backend: {
+      backendId,
+      backendUrl,
+      nodeId: manifest.id,
+      manifest,
+      parameters,
+    },
     generationStatus: 'idle',
   };
 }

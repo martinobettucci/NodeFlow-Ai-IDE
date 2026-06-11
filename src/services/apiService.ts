@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { fal } from '@fal-ai/client';
-import { OpenAIImageResponse, FalVideoResponse } from '../types';
+import { OpenAIImageResponse } from '../types';
 import { toFile, resizeFileTo512 } from './fileUtils';
 
 // OpenAI API functions
@@ -16,7 +16,7 @@ export async function testApiKey(type: 'openai' | 'falai', apiKey: string): Prom
       });
       
       try {
-        await fal.run('fal-ai/text-to-image');
+        await fal.run('fal-ai/text-to-image', { input: {} });
         return true;
       } catch (error) {
         if (error instanceof Error && 
@@ -71,7 +71,7 @@ export async function generateImage(
   settings: {
     model?: 'dall-e-2' | 'dall-e-3' | 'gpt-image-1';
     size?: string;
-    quality?: string;
+    quality?: 'standard' | 'hd' | 'low' | 'medium' | 'high';
     style?: 'vivid' | 'natural';
     background?: 'auto' | 'transparent' | 'opaque';
     output_format?: 'png' | 'jpeg' | 'webp';
@@ -91,8 +91,10 @@ export async function generateImage(
     // Only include response_format for DALL-E models
     const baseParams = {
       n: 1,
-      size: settings.size || '1024x1024',
-      ...(isGPTImage ? {} : { response_format: 'b64_json' }),
+      // The OpenAI SDK narrows allowed sizes per endpoint; the UI already
+      // constrains the choices per model, so a single cast keeps tsc happy.
+      size: (settings.size || '1024x1024') as '1024x1024',
+      ...(isGPTImage ? {} : { response_format: 'b64_json' as const }),
       ...(settings.style && { style: settings.style }),
       ...(settings.background && { background: settings.background }),
       ...(settings.output_format && { output_format: settings.output_format }),

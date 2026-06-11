@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import APIKeysTab from './APIKeysTab';
+import BackendsTab from './BackendsTab';
 import AboutTab from './AboutTab';
 
-type Tab = 'api_keys' | 'about';
+type Tab = 'api_keys' | 'backends' | 'about';
 
 interface SettingsModalProps {
   initialTab?: Tab;
@@ -42,6 +43,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
           <button
             className={`px-4 py-2 text-sm font-medium ${
+              activeTab === 'backends'
+                ? 'text-blue-500 border-b-2 border-blue-500'
+                : 'text-slate-400 hover:text-slate-300'
+            }`}
+            onClick={() => setActiveTab('backends')}
+          >
+            Backends
+          </button>
+          <button
+            className={`px-4 py-2 text-sm font-medium ${
               activeTab === 'about'
                 ? 'text-blue-500 border-b-2 border-blue-500'
                 : 'text-slate-400 hover:text-slate-300'
@@ -54,6 +65,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         
         <div className="p-4">
           {activeTab === 'api_keys' && <APIKeysTab onClose={onClose} />}
+          {activeTab === 'backends' && <BackendsTab />}
           {activeTab === 'about' && <AboutTab />}
         </div>
       </div>

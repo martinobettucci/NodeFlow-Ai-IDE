@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApiKeys } from '../../contexts/APIKeyContext';
-import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { testApiKey } from '../../services/apiService';
 
 interface APIKeysTabProps {

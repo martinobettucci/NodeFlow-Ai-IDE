@@ -7,6 +7,8 @@ const connectionEmoticons = {
   [ConnectionType.IMAGE]: '🖼️',
   [ConnectionType.MASK]: '🎭',
   [ConnectionType.VIDEO]: '🎥',
+  [ConnectionType.AUDIO]: '🔊',
+  [ConnectionType.JSON]: '🧾',
 };
 
 interface NodePropertiesProps {

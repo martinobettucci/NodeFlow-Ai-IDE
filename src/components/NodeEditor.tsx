@@ -14,17 +14,20 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 
 import { useProject } from '../contexts/ProjectContext';
+import { useBackends } from '../contexts/BackendContext';
 import { NodeType, ConnectionType } from '../types';
-import { createNode } from '../utils/projectUtils';
+import { createNode, createBackendNode } from '../utils/projectUtils';
 import TextNode from './nodes/TextNode';
 import ImageNode from './nodes/ImageNode';
 import VideoNode from './nodes/VideoNode';
+import BackendNode from './nodes/BackendNode';
 import CustomEdge from './nodes/CustomEdge';
 import NodePalette from './sidebar/NodePalette';
 import NodeProperties from './sidebar/NodeProperties';
 
 const NodeEditor: React.FC = () => {
   const { currentProject, updateProject } = useProject();
+  const { backends } = useBackends();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
@@ -40,6 +43,7 @@ const NodeEditor: React.FC = () => {
     [NodeType.IMAGE_GENERATED]: ImageNode,
     [NodeType.VIDEO_STATIC]: VideoNode,
     [NodeType.VIDEO_GENERATED]: VideoNode,
+    [NodeType.BACKEND]: BackendNode,
   }), []);
   
   const edgeTypes = useMemo<EdgeTypes>(() => ({
@@ -110,6 +114,22 @@ const NodeEditor: React.FC = () => {
     return connectedEdges;
   }, [nodes, edges]);
 
+  // Resolve incoming connections of a node with their handles and source data,
+  // so backend nodes can map each connected input to the right SDK input spec.
+  const getIncomingConnections = useCallback((nodeId: string) => {
+    return edges
+      .filter(edge => edge.target === nodeId)
+      .flatMap(edge => {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        if (!sourceNode) return [];
+        return [{
+          targetHandle: edge.targetHandle || '',
+          sourceHandle: edge.sourceHandle || '',
+          source: sourceNode.data,
+        }];
+      });
+  }, [nodes, edges]);
+
   // Function to update node data
   const updateNodeData = useCallback((nodeId: string, updates: Record<string, any>) => {
     setNodes((nds) =>
@@ -148,10 +168,11 @@ const NodeEditor: React.FC = () => {
           width: node.position.width || 250,
           height: node.position.height || 200,
         },
-        data: { 
+        data: {
           ...node,
           updateNodeData: (updates: Record<string, any>) => updateNodeData(node.id, updates),
           getConnectedInputs: () => getConnectedInputs(node.id),
+          getIncomingConnections: () => getIncomingConnections(node.id),
         },
       }));
       
@@ -176,7 +197,7 @@ const NodeEditor: React.FC = () => {
     if (currentProject && nodes.length > 0) {
       // Create clean copies for comparison
       const cleanNodes = nodes.map(node => {
-        const { updateNodeData, getConnectedInputs, ...cleanData } = node.data;
+        const { updateNodeData, getConnectedInputs, getIncomingConnections, ...cleanData } = node.data;
         // Include node dimensions in position data
         cleanData.position = {
           x: node.position.x,
@@ -256,7 +277,11 @@ const NodeEditor: React.FC = () => {
       const targetNode = nodes.find(n => n.id === connection.target);
       
       if (sourceNode && targetNode) {
-        const sourceOutput = sourceNode.data.output;
+        // Backend nodes can expose several outputs; resolve by handle.
+        const sourceOutputs = sourceNode.data.outputs ?? [sourceNode.data.output];
+        const sourceOutput = sourceOutputs.find(
+          (o: any) => o.id === connection.sourceHandle
+        ) ?? sourceNode.data.output;
         const targetInput = targetNode.data.inputs.find(
           (i: any) => i.id === connection.targetHandle
         );
@@ -273,10 +298,16 @@ const NodeEditor: React.FC = () => {
         }
         
         // Only allow connection if types are compatible
-        if (sourceOutput && targetInput && sourceOutput.type === targetInput.type) {
+        if (
+          sourceOutput && targetInput &&
+          sourceOutput.type === targetInput.type &&
+          connection.source && connection.target
+        ) {
           // Create edge with correct type
           const edge: Edge = {
             ...connection,
+            source: connection.source,
+            target: connection.target,
             id: `e${connection.source}-${connection.target}-${Date.now()}`,
             data: { type: sourceOutput.type },
           };
@@ -356,42 +387,66 @@ const NodeEditor: React.FC = () => {
     (event: React.DragEvent) => {
       event.preventDefault();
 
-      const type = event.dataTransfer.getData('application/nodeType') as NodeType;
-      
-      if (typeof type === 'string' && reactFlowWrapper.current && reactFlowInstance) {
-        const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-        const position = reactFlowInstance.project({
-          x: event.clientX - reactFlowBounds.left,
-          y: event.clientY - reactFlowBounds.top,
-        });
-        
-        // Create new node
-        const newNode = createNode(type, position);
-        
-        // Add node to state
-        setNodes(nds => {
-          const nodeWithFunctions = {
-            ...newNode,
-            updateNodeData: (updates: Record<string, any>) => updateNodeData(newNode.id, updates),
-            getConnectedInputs: () => getConnectedInputs(newNode.id),
-          };
-          
-          return [
-            ...nds,
-            {
-              id: newNode.id,
-              type: newNode.type,
-              position: newNode.position,
-              data: nodeWithFunctions,
-            },
-          ];
-        });
-        
-        // Select the new node
-        setSelectedNode(newNode.id);
+      if (!reactFlowWrapper.current || !reactFlowInstance) {
+        return;
       }
+
+      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      const position = reactFlowInstance.project({
+        x: event.clientX - reactFlowBounds.left,
+        y: event.clientY - reactFlowBounds.top,
+      });
+
+      // Create the new node: either a NodeFlow backend node or a built-in one
+      let newNode = null;
+      const backendPayload = event.dataTransfer.getData('application/nodeflow-backend');
+      if (backendPayload) {
+        try {
+          const { backendId, nodeId } = JSON.parse(backendPayload);
+          const backend = backends.find(b => b.id === backendId);
+          const manifest = backend?.manifests.find(m => m.id === nodeId);
+          if (backend && manifest) {
+            newNode = createBackendNode(backend.id, backend.url, manifest, position);
+          }
+        } catch (error) {
+          console.error('Invalid backend node payload:', error);
+        }
+      } else {
+        const type = event.dataTransfer.getData('application/nodeType') as NodeType;
+        if (typeof type === 'string' && type) {
+          newNode = createNode(type, position);
+        }
+      }
+
+      if (!newNode) {
+        return;
+      }
+      const createdNode = newNode;
+
+      // Add node to state
+      setNodes(nds => {
+        const nodeWithFunctions = {
+          ...createdNode,
+          updateNodeData: (updates: Record<string, any>) => updateNodeData(createdNode.id, updates),
+          getConnectedInputs: () => getConnectedInputs(createdNode.id),
+          getIncomingConnections: () => getIncomingConnections(createdNode.id),
+        };
+
+        return [
+          ...nds,
+          {
+            id: createdNode.id,
+            type: createdNode.type,
+            position: createdNode.position,
+            data: nodeWithFunctions,
+          },
+        ];
+      });
+
+      // Select the new node
+      setSelectedNode(createdNode.id);
     },
-    [reactFlowInstance, setNodes]
+    [reactFlowInstance, setNodes, backends, updateNodeData, getConnectedInputs, getIncomingConnections]
   );
 
   return (

@@ -1,13 +1,15 @@
 import React from 'react';
 import { Handle, Position, NodeResizer } from 'reactflow';
 import { clsx } from 'clsx';
-import { NodeData, NodeCategory, NodeMode, ConnectionType } from '../../types';
+import { NodeData, NodeCategory, NodeMode } from '../../types';
 
 const connectionEmoticons = {
   text: '📝',
   image: '🖼️',
   mask: '🎭',
   video: '🎥',
+  audio: '🔊',
+  json: '🧾',
 };
 
 interface BaseNodeProps {
@@ -39,8 +41,9 @@ const BaseNode: React.FC<BaseNodeProps> = ({ data, selected, children }) => {
       [NodeCategory.TEXT]: 'text-node-text',
       [NodeCategory.IMAGE]: 'text-node-image',
       [NodeCategory.VIDEO]: 'text-node-video',
+      [NodeCategory.MASK]: 'text-node-mask',
     };
-    
+
     return textColors[data.category];
   };
   

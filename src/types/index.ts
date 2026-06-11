@@ -1,3 +1,5 @@
+import { BackendNodeManifest } from '../services/nodeflow/types';
+
 // Node types
 export enum NodeType {
   TEXT_STATIC = 'text_static',
@@ -5,7 +7,8 @@ export enum NodeType {
   IMAGE_STATIC = 'image_static',
   IMAGE_GENERATED = 'image_generated',
   VIDEO_STATIC = 'video_static',
-  VIDEO_GENERATED = 'video_generated'
+  VIDEO_GENERATED = 'video_generated',
+  BACKEND = 'backend'
 }
 
 export enum NodeCategory {
@@ -24,7 +27,9 @@ export enum ConnectionType {
   TEXT = 'text',
   IMAGE = 'image',
   MASK = 'mask',
-  VIDEO = 'video'
+  VIDEO = 'video',
+  AUDIO = 'audio',
+  JSON = 'json'
 }
 
 export interface NodeData {
@@ -45,6 +50,8 @@ export interface NodeData {
     type: ConnectionType;
     maxConnections?: number;
     connected?: boolean;
+    label?: string;
+    ioId?: string; // SDK IOId for backend nodes
   }[];
   output: {
     id: string;
@@ -79,6 +86,24 @@ export interface NodeData {
   generationSeed?: number;
   uploaded_url?: string;
   last_uploaded_content?: string;
+
+  // NodeFlow SDK backend nodes
+  backend?: {
+    backendId: string; // RegisteredBackend.id
+    backendUrl: string;
+    nodeId: string; // SDK NodeId
+    manifest: BackendNodeManifest;
+    parameters: Record<string, unknown>;
+  };
+  // Multi-output nodes (backend nodes); single-output nodes keep `output`.
+  outputs?: {
+    id: string;
+    type: ConnectionType;
+    label?: string;
+    ioId?: string;
+  }[];
+  // Per-output-handle results from the last backend run (text or data URL).
+  results?: Record<string, { content: string; mimeType: string }>;
 }
 
 export interface Connection {
