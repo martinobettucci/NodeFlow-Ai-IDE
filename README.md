@@ -22,7 +22,7 @@ The IDE is a **pure NodeFlow SDK client**. It ships only *input* nodes
   checkbox/combobox/textbox/number parameters).
 - **Thin wrappers for SaaS APIs.** Want OpenAI or FAL.AI? Serve the
   ready-made wrapper backends from the SDK repo
-  (`scripts/examples/openai_backend`, `scripts/examples/falai_backend`).
+  (`scripts/official/openai_backend`, `scripts/official/falai_backend`).
 
 ```text
 [ IDE (browser) ] ──RSA session──▶ [ NodeFlow SDK backend(s) ]
@@ -93,12 +93,12 @@ Then in the IDE: **Settings → Backends → add `http://localhost:8765`**.
 
 ```bash
 # OpenAI (text + image)
-cd scripts/examples/openai_backend
+cd scripts/official/openai_backend
 export OPENAI_API_KEY=sk-...
 nodeflowsdk serve --port 8801 --nodes openai_nodes.py
 
 # FAL.AI (FLUX image + framepack video)
-cd scripts/examples/falai_backend
+cd scripts/official/falai_backend
 export FAL_KEY=key_id:key_secret
 nodeflowsdk serve --port 8802 --nodes falai_nodes.py
 ```
