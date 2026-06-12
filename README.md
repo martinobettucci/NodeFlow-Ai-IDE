@@ -106,6 +106,23 @@ nodeflowsdk serve --port 8802 --nodes falai_nodes.py
 Add `http://localhost:8801` and `http://localhost:8802` as backends, and the
 OpenAI/FAL nodes appear in the palette — keys never leave the servers.
 
+### Connect through an API Gateway
+
+In team or production setups, backends sit behind the
+[NodeFlow API Gateway](https://github.com/martinobettucci/Nodeflow-API-Gateway),
+which aggregates them behind authentication, usage policies and credit
+metering — and speaks the exact same backend protocol:
+
+1. Get an API key from your gateway (console → API keys, shown once).
+2. **Settings → Backends**: add the gateway URL and paste the key in the
+   optional **API key** field (sent inside the session handshake; plain
+   SDK backends ignore it). The key is stored locally with the backend
+   entry.
+3. The aggregated catalogue appears in the palette with namespaced ids
+   (`openai::gpt-image`). When a node reports its price, the cost of the
+   last run is shown on the node (e.g. `2.5 cr`); workflows are blocked by
+   the gateway before launch when your wallet can't cover the estimate.
+
 ---
 
 ## 🧪 Quality
