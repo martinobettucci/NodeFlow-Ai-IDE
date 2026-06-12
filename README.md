@@ -41,6 +41,8 @@ The IDE is a **pure NodeFlow SDK client**. It ships only *input* nodes
   and in the properties panel
 - **Run Workflow** — executes every backend node of the canvas in
   topological order, streaming each node's results to its downstream nodes
+- **Live progress** — runs are followed over a WebSocket (polling fallback);
+  nodes that call `report_progress()` show live percentages on the canvas
 - **Sessions** — RSA-PSS handshake (WebCrypto), automatic reconnection and
   session renewal; each canvas node maps to an isolated backend instance
 - **Projects** — create, clone, rename, export/import (JSON), delete;
@@ -49,6 +51,28 @@ The IDE is a **pure NodeFlow SDK client**. It ships only *input* nodes
 ---
 
 ## 🚀 Getting started
+
+### Option A — official stack with Docker (recommended)
+
+One command starts the IDE, the official OpenAI/FAL.AI/Whisper backends and a
+private Redis. Everything binds to **127.0.0.1 only**, containers run
+non-root with read-only filesystems, dropped capabilities and
+`no-new-privileges`; Redis is on an internal network with no published port.
+
+```bash
+cp .env.example .env   # add your OPENAI_API_KEY / FAL_KEY (optional)
+docker compose up -d
+# open http://localhost:8080 and add in Settings > Backends:
+#   http://localhost:8801  (OpenAI)
+#   http://localhost:8802  (FAL.AI)
+#   http://localhost:8803  (Whisper)
+```
+
+Images are built by GitHub Actions and published to GHCR:
+`ghcr.io/martinobettucci/nodeflow-ai-ide` and
+`ghcr.io/p2enjoy/nodeflow-backend-{openai,falai,whisper}`.
+
+### Option B — local development
 
 ```bash
 npm install

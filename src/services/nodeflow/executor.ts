@@ -114,7 +114,18 @@ export async function runBackendNode(
   );
 
   onProgress?.('Running...');
-  const finalStatus = await client.waitForRun(backend.nodeId, instanceId, runId);
+  const finalStatus = await client.watchRun(backend.nodeId, instanceId, runId, {
+    onUpdate: (status) => {
+      if (status.progress !== null && status.progress !== undefined) {
+        const percent = Math.round(status.progress * 100);
+        onProgress?.(
+          status.progress_message
+            ? `${percent}% — ${status.progress_message}`
+            : `Running... ${percent}%`,
+        );
+      }
+    },
+  });
 
   if (finalStatus.status === BackendRunStatus.ERROR) {
     const message =

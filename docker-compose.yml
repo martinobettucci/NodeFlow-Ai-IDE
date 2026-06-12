@@ -1,0 +1,92 @@
+# Official NodeFlow stack: IDE + officially maintained backends + private Redis.
+#
+#   cp .env.example .env   # fill in your API keys
+#   docker compose up -d
+#   open http://localhost:8080 and add the backends in Settings > Backends:
+#     http://localhost:8801  (OpenAI)   http://localhost:8802  (FAL.AI)
+#     http://localhost:8803  (Whisper)
+#
+# Everything binds to 127.0.0.1 only (local-first). Redis lives on an
+# internal network with no published ports; containers are hardened
+# (read-only FS, no privilege escalation, all capabilities dropped) so a
+# compromised service has as little reach as possible.
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+services:
+  ide:
+    image: ghcr.io/martinobettucci/nodeflow-ai-ide:latest
+    build: .
+    <<: *hardening
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  openai-backend:
+    image: ghcr.io/p2enjoy/nodeflow-backend-openai:latest
+    <<: *hardening
+    ports:
+      - "127.0.0.1:8801:80"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - REDIS_URL=redis://redis:6379/0
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      - default
+      - data
+    depends_on:
+      - redis
+
+  falai-backend:
+    image: ghcr.io/p2enjoy/nodeflow-backend-falai:latest
+    <<: *hardening
+    ports:
+      - "127.0.0.1:8802:80"
+    environment:
+      - FAL_KEY=${FAL_KEY:-}
+      - REDIS_URL=redis://redis:6379/1
+    read_only: true
+    tmpfs:
+      - /tmp
+    networks:
+      - default
+      - data
+    depends_on:
+      - redis
+
+  whisper-backend:
+    image: ghcr.io/p2enjoy/nodeflow-backend-whisper:latest
+    <<: *hardening
+    ports:
+      - "127.0.0.1:8803:80"
+    volumes:
+      - whisper-data:/app/data
+    tmpfs:
+      - /tmp
+
+  redis:
+    image: redis:7-alpine
+    <<: *hardening
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis-data:/data
+    networks:
+      - data
+
+networks:
+  default:
+  data:
+    internal: true
+
+volumes:
+  whisper-data:
+  redis-data:

@@ -213,6 +213,81 @@ export class NodeFlowClient {
     }
   }
 
+  // Follow a run live over the WebSocket stream, falling back to HTTP
+  // polling when WebSockets are unavailable or the stream breaks early.
+  async watchRun(
+    nodeId: string,
+    instanceId: string,
+    runId: string,
+    options?: { timeoutMs?: number; onUpdate?: (status: RunStatusResult) => void },
+  ): Promise<RunStatusResult> {
+    try {
+      return await this.watchRunOverWebSocket(nodeId, instanceId, runId, options);
+    } catch {
+      return this.waitForRun(nodeId, instanceId, runId, {
+        timeoutMs: options?.timeoutMs,
+        onPoll: options?.onUpdate,
+      });
+    }
+  }
+
+  private watchRunOverWebSocket(
+    nodeId: string,
+    instanceId: string,
+    runId: string,
+    options?: { timeoutMs?: number; onUpdate?: (status: RunStatusResult) => void },
+  ): Promise<RunStatusResult> {
+    return new Promise<RunStatusResult>((resolve, reject) => {
+      if (typeof WebSocket === 'undefined') {
+        reject(new Error('WebSocket is not available in this environment'));
+        return;
+      }
+      if (!this.sessionId) {
+        reject(new Error('Not connected: perform the session handshake first'));
+        return;
+      }
+
+      const wsUrl =
+        this.baseUrl.replace(/^http/, 'ws') +
+        `${this.instancePath(nodeId, instanceId)}/runs/${encodeURIComponent(runId)}/ws` +
+        `?session_id=${encodeURIComponent(this.sessionId)}`;
+
+      const socket = new WebSocket(wsUrl);
+      let terminal: RunStatusResult | null = null;
+      const timeout = setTimeout(() => {
+        socket.close();
+        reject(new Error(`Run ${runId} timed out`));
+      }, options?.timeoutMs ?? DEFAULT_RUN_TIMEOUT_MS);
+
+      socket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(String(event.data)) as RunStatusResult;
+          options?.onUpdate?.(payload);
+          if (
+            payload.status === BackendRunStatus.FINISHED ||
+            payload.status === BackendRunStatus.ERROR
+          ) {
+            terminal = payload;
+            socket.close();
+          }
+        } catch {
+          // Malformed frame: let the close handler decide.
+        }
+      };
+      socket.onclose = () => {
+        clearTimeout(timeout);
+        if (terminal) {
+          resolve(terminal);
+        } else {
+          reject(new Error('WebSocket closed before the run completed'));
+        }
+      };
+      socket.onerror = () => {
+        // onclose always follows onerror; nothing else to do here.
+      };
+    });
+  }
+
   async downloadOutput(nodeId: string, instanceId: string, outputId: string): Promise<Blob> {
     const response = await this.rawRequest(
       'GET',

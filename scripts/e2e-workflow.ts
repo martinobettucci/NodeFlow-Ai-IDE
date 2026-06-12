@@ -58,8 +58,10 @@ async function main() {
   }
   console.log(`4. Workflow finished: ${result.executed} backend nodes executed`);
 
+  // Some processing nodes annotate their output (e.g. the SDK test node
+  // prefixes the instance id); only require the text to flow through both.
   const finalContent = updates.get(echo2.id)?.content;
-  if (finalContent !== 'Salut le workflow!') {
+  if (typeof finalContent !== 'string' || !finalContent.includes('Salut le workflow!')) {
     throw new Error(`Unexpected final content: ${JSON.stringify(finalContent)}`);
   }
   console.log(`   OK - text flowed through both nodes: ${JSON.stringify(finalContent)}`);

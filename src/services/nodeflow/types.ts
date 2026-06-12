@@ -53,6 +53,9 @@ export interface RunStatusResult {
   status: BackendRunStatus;
   outputs: Record<string, string[]> | null;
   errors: { type: string; message: string }[] | null;
+  // Execution progress reported by the node (0.0 - 1.0), when available
+  progress?: number | null;
+  progress_message?: string | null;
 }
 
 export interface BackendHealth {
