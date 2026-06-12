@@ -16,6 +16,8 @@ export interface BackendRunResults {
   // Keyed by output handle id (`${nodeId}-out-${ioId}`)
   results: Record<string, { content: string; mimeType: string }>;
   primaryContent?: string;
+  // Cost of the run in credits, when reported by the backend
+  cost?: number | null;
 }
 
 function dataUrlToBlob(dataUrl: string): { blob: Blob; mimeType: string } {
@@ -155,5 +157,5 @@ export async function runBackendNode(
     }
   }
 
-  return { results, primaryContent };
+  return { results, primaryContent, cost: finalStatus.cost ?? null };
 }

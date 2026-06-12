@@ -56,6 +56,20 @@ export interface RunStatusResult {
   // Execution progress reported by the node (0.0 - 1.0), when available
   progress?: number | null;
   progress_message?: string | null;
+  // Cost of the run in credits, reported by the node (or injected by an
+  // API gateway), when available
+  cost?: number | null;
+  cost_detail?: Record<string, unknown> | null;
+}
+
+// Result of POST /nodes/{id}/cost/estimate; older backends without the
+// endpoint are mapped to { estimable: false }.
+export interface CostEstimateResult {
+  estimable: boolean;
+  cost?: number | null;
+  currency?: string;
+  confidence?: string | null;
+  detail?: Record<string, unknown> | null;
 }
 
 export interface BackendHealth {
@@ -70,6 +84,10 @@ export interface RegisteredBackend {
   id: string;
   url: string;
   name: string;
+  // Optional API key sent with the session handshake (used by API
+  // gateways; plain SDK backends ignore it). Stored locally with the
+  // backend entry.
+  apiKey?: string;
   status: BackendConnectionStatus;
   manifests: BackendNodeManifest[];
   error?: string;

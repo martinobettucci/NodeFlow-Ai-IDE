@@ -12,6 +12,7 @@ const statusStyles: Record<string, string> = {
 const BackendsTab: React.FC = () => {
   const { backends, addBackend, removeBackend, connectBackend, disconnectBackend } = useBackends();
   const [url, setUrl] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -20,8 +21,9 @@ const BackendsTab: React.FC = () => {
     setIsAdding(true);
     setAddError(null);
     try {
-      await addBackend(url);
+      await addBackend(url, undefined, apiKey);
       setUrl('');
+      setApiKey('');
     } catch (error) {
       setAddError(error instanceof Error ? error.message : 'Failed to add backend');
     } finally {
@@ -53,6 +55,15 @@ const BackendsTab: React.FC = () => {
           {isAdding ? 'Connecting...' : 'Add'}
         </button>
       </div>
+      <input
+        type="password"
+        value={apiKey}
+        onChange={(e) => setApiKey(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+        placeholder="API key (optional, for gateways; stored locally)"
+        autoComplete="off"
+        className="w-full px-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+      />
       {addError && <div className="text-xs text-red-400">{addError}</div>}
 
       <div className="space-y-2">

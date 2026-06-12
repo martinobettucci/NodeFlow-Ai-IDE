@@ -77,6 +77,8 @@ export interface NodeData {
   }[];
   // Per-output-handle results from the last backend run (text or data URL).
   results?: Record<string, { content: string; mimeType: string }>;
+  // Cost in credits of the last backend run, when reported.
+  lastRunCost?: number | null;
 }
 
 export interface Connection {

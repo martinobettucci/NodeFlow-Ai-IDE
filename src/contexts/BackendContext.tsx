@@ -7,7 +7,7 @@ const STORAGE_KEY = 'nodeflow_backends';
 
 interface BackendContextType {
   backends: RegisteredBackend[];
-  addBackend: (url: string, name?: string) => Promise<void>;
+  addBackend: (url: string, name?: string, apiKey?: string) => Promise<void>;
   removeBackend: (id: string) => void;
   connectBackend: (id: string) => Promise<void>;
   disconnectBackend: (id: string) => Promise<void>;
@@ -20,7 +20,12 @@ function loadStoredBackends(): RegisteredBackend[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as { id: string; url: string; name: string }[];
+    const parsed = JSON.parse(raw) as {
+      id: string;
+      url: string;
+      name: string;
+      apiKey?: string;
+    }[];
     return parsed.map((b) => ({
       ...b,
       status: 'disconnected' as const,
@@ -34,7 +39,7 @@ function loadStoredBackends(): RegisteredBackend[] {
 function persistBackends(backends: RegisteredBackend[]): void {
   localStorage.setItem(
     STORAGE_KEY,
-    JSON.stringify(backends.map(({ id, url, name }) => ({ id, url, name }))),
+    JSON.stringify(backends.map(({ id, url, name, apiKey }) => ({ id, url, name, apiKey }))),
   );
 }
 
@@ -46,10 +51,10 @@ export const BackendProvider: React.FC<{ children: ReactNode }> = ({ children })
     setBackends((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
   };
 
-  const connectById = async (id: string, url: string) => {
+  const connectById = async (id: string, url: string, apiKey?: string) => {
     updateBackend(id, { status: 'connecting', error: undefined });
     try {
-      const client = new NodeFlowClient(url);
+      const client = new NodeFlowClient(url, apiKey);
       await client.handshake();
       const manifests = await client.listNodes();
       clientsRef.current.set(id, client);
@@ -65,12 +70,16 @@ export const BackendProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const addBackend = async (url: string, name?: string) => {
+  const addBackend = async (url: string, name?: string, apiKey?: string) => {
     const trimmed = url.trim().replace(/\/+$/, '');
     if (!trimmed) return;
+    const trimmedKey = apiKey?.trim() || undefined;
     const existing = backends.find((b) => b.url === trimmed);
     if (existing) {
-      await connectById(existing.id, existing.url);
+      if (trimmedKey !== existing.apiKey) {
+        updateBackend(existing.id, { apiKey: trimmedKey });
+      }
+      await connectById(existing.id, existing.url, trimmedKey ?? existing.apiKey);
       return;
     }
 
@@ -78,11 +87,12 @@ export const BackendProvider: React.FC<{ children: ReactNode }> = ({ children })
       id: nanoid(8),
       url: trimmed,
       name: name?.trim() || new URL(trimmed).host,
+      apiKey: trimmedKey,
       status: 'disconnected',
       manifests: [],
     };
     setBackends((prev) => [...prev, backend]);
-    await connectById(backend.id, backend.url).catch(() => {
+    await connectById(backend.id, backend.url, backend.apiKey).catch(() => {
       // Status/error already recorded on the backend entry.
     });
   };
@@ -99,7 +109,7 @@ export const BackendProvider: React.FC<{ children: ReactNode }> = ({ children })
   const connectBackend = async (id: string) => {
     const backend = backends.find((b) => b.id === id);
     if (!backend) return;
-    await connectById(id, backend.url).catch(() => undefined);
+    await connectById(id, backend.url, backend.apiKey).catch(() => undefined);
   };
 
   const disconnectBackend = async (id: string) => {
@@ -121,7 +131,7 @@ export const BackendProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Reconnect known backends once on startup.
   useEffect(() => {
     loadStoredBackends().forEach((backend) => {
-      connectById(backend.id, backend.url).catch(() => undefined);
+      connectById(backend.id, backend.url, backend.apiKey).catch(() => undefined);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -25,6 +25,7 @@ import {
   BackendHealth,
   BackendNodeManifest,
   BackendRunStatus,
+  CostEstimateResult,
   RunStatusResult,
 } from './types';
 
@@ -51,10 +52,12 @@ async function errorFromResponse(response: Response): Promise<Error> {
 
 export class NodeFlowClient {
   readonly baseUrl: string;
+  private readonly apiKey?: string;
   private sessionId: string | null = null;
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string, apiKey?: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
+    this.apiKey = apiKey?.trim() || undefined;
   }
 
   get isConnected(): boolean {
@@ -92,6 +95,9 @@ export class NodeFlowClient {
         public_key_pem: publicKeyPem,
         signature_b64: signature,
         ttl: ttl ?? null,
+        // Only sent when configured: gateways authenticate with it,
+        // plain SDK backends ignore unknown fields.
+        ...(this.apiKey ? { api_key: this.apiKey } : {}),
       }),
     });
     if (!response.ok) {
@@ -141,6 +147,24 @@ export class NodeFlowClient {
       'GET',
       `/nodes/${encodeURIComponent(nodeId)}/health`,
     )) as BackendHealth;
+  }
+
+  // Preview the cost of a run for the given configuration without
+  // executing it. Backends predating the endpoint report 404, which is
+  // mapped to { estimable: false }.
+  async estimateCost(
+    nodeId: string,
+    configuration: Record<string, unknown>,
+  ): Promise<CostEstimateResult> {
+    try {
+      return (await this.requestJson(
+        'POST',
+        `/nodes/${encodeURIComponent(nodeId)}/cost/estimate`,
+        { configuration },
+      )) as CostEstimateResult;
+    } catch {
+      return { estimable: false };
+    }
   }
 
   async uploadInput(

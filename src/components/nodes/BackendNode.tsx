@@ -53,7 +53,7 @@ const BackendNode: React.FC<any> = ({ data, selected }) => {
     data.updateNodeData({ generationStatus: 'generating', generationError: undefined });
     try {
       const incoming = data.getIncomingConnections();
-      const { results, primaryContent } = await runBackendNode(
+      const { results, primaryContent, cost } = await runBackendNode(
         client,
         data,
         incoming,
@@ -63,6 +63,7 @@ const BackendNode: React.FC<any> = ({ data, selected }) => {
         results,
         content: primaryContent,
         generationStatus: 'success',
+        lastRunCost: cost,
       });
     } catch (error) {
       data.updateNodeData({
@@ -212,6 +213,13 @@ const BackendNode: React.FC<any> = ({ data, selected }) => {
             {data.generationError}
           </div>
         )}
+        {data.generationStatus !== 'error' &&
+          data.lastRunCost !== null &&
+          data.lastRunCost !== undefined && (
+            <div className="text-xs text-slate-400" title="Cost of the last run, in credits">
+              {data.lastRunCost} cr
+            </div>
+          )}
       </div>
 
       {/* Input handles */}
