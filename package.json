@@ -1,7 +1,7 @@
 {
   "name": "nodeflow-ai-ide",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,22 +9,17 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview",
-    "e2e:backend": "tsx scripts/e2e-backend.ts"
+    "e2e:backend": "tsx scripts/e2e-backend.ts",
+    "e2e:workflow": "tsx scripts/e2e-workflow.ts"
   },
   "dependencies": {
-    "@fal-ai/client": "^1.4.0",
     "clsx": "^2.1.0",
-    "cross-fetch": "^4.0.0",
     "idb": "^8.0.0",
     "lucide-react": "^0.344.0",
     "nanoid": "^5.0.6",
-    "openai": "^4.30.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-flow-renderer": "^10.3.17",
-    "reactflow": "^11.10.4",
-    "tailwind-merge": "^2.2.1",
-    "zustand": "^4.5.2"
+    "reactflow": "^11.10.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

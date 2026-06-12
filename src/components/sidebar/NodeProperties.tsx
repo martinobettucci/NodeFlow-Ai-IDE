@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Server } from 'lucide-react';
 import { NodeType, NodeMode, ConnectionType } from '../../types';
+import { BackendNodeParameter, BackendParamType } from '../../services/nodeflow/types';
 
 const connectionEmoticons = {
   [ConnectionType.TEXT]: '📝',
@@ -20,7 +21,7 @@ interface NodePropertiesProps {
 const NodeProperties: React.FC<NodePropertiesProps> = ({ nodeId, nodes, setNodes }) => {
   const [nodeName, setNodeName] = useState('');
   const selectedNode = nodes.find((node) => node.id === nodeId);
-  
+
   useEffect(() => {
     if (selectedNode) {
       setNodeName(selectedNode.data.label || '');
@@ -28,7 +29,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({ nodeId, nodes, setNodes
       setNodeName('');
     }
   }, [selectedNode]);
-  
+
   if (!selectedNode) {
     return (
       <div className="p-4">
@@ -39,7 +40,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({ nodeId, nodes, setNodes
       </div>
     );
   }
-  
+
   const updateNodeData = (updates: Record<string, any>) => {
     setNodes((nds) =>
       nds.map((node) => {
@@ -56,47 +57,114 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({ nodeId, nodes, setNodes
       })
     );
   };
-  
+
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
     setNodeName(newName);
     updateNodeData({ label: newName });
   };
-  
-  // Determine node type label
+
+  const backendInfo = selectedNode.data.backend;
+
+  const updateParameter = (paramId: string, value: unknown) => {
+    updateNodeData({
+      backend: {
+        ...backendInfo,
+        parameters: { ...backendInfo.parameters, [paramId]: value },
+      },
+    });
+  };
+
   const getNodeTypeLabel = () => {
     switch (selectedNode.type) {
       case NodeType.TEXT_STATIC:
-        return 'Static Text Node';
-      case NodeType.TEXT_GENERATED:
-        return 'Generated Text Node';
+        return 'Text Input Node';
       case NodeType.IMAGE_STATIC:
-        return 'Static Image Node';
-      case NodeType.IMAGE_GENERATED:
-        return 'Generated Image Node';
+        return 'Image Input Node';
+      case NodeType.AUDIO_STATIC:
+        return 'Audio Input Node';
       case NodeType.VIDEO_STATIC:
-        return 'Static Video Node';
-      case NodeType.VIDEO_GENERATED:
-        return 'Generated Video Node';
+        return 'Video Input Node';
+      case NodeType.BACKEND:
+        return 'Backend Node';
       default:
         return 'Unknown Node Type';
     }
   };
-  
-  // Get color class based on node category
+
   const getColorClass = () => {
     switch (selectedNode.data.category) {
       case 'text':
         return 'text-node-text';
       case 'image':
         return 'text-node-image';
+      case 'audio':
+        return 'text-node-audio';
       case 'video':
         return 'text-node-video';
+      case 'mask':
+        return 'text-node-mask';
       default:
         return '';
     }
   };
-  
+
+  const renderParameterField = (param: BackendNodeParameter) => {
+    const value = backendInfo.parameters[param.id];
+    const inputClasses =
+      'w-full p-1.5 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500';
+
+    switch (param.type) {
+      case BackendParamType.CHECKBOX:
+        return (
+          <label className="flex items-center space-x-2 text-sm">
+            <input
+              type="checkbox"
+              checked={Boolean(value)}
+              onChange={(e) => updateParameter(param.id, e.target.checked)}
+              className="w-4 h-4 rounded border-slate-700 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-slate-300">{param.label}</span>
+          </label>
+        );
+      case BackendParamType.COMBOBOX:
+        return (
+          <select
+            value={String(value ?? '')}
+            onChange={(e) => updateParameter(param.id, e.target.value)}
+            className={inputClasses}
+          >
+            {(param.options ?? []).map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        );
+      case BackendParamType.NUMBER:
+        return (
+          <input
+            type="number"
+            step="any"
+            value={value === undefined || value === null ? '' : String(value)}
+            onChange={(e) =>
+              updateParameter(param.id, e.target.value === '' ? param.default : Number(e.target.value))
+            }
+            className={inputClasses}
+          />
+        );
+      default: // TEXTBOX
+        return (
+          <textarea
+            value={String(value ?? '')}
+            onChange={(e) => updateParameter(param.id, e.target.value)}
+            rows={3}
+            className={`${inputClasses} resize-none`}
+          />
+        );
+    }
+  };
+
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
@@ -114,7 +182,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({ nodeId, nodes, setNodes
           <span className="text-sm">Delete</span>
         </button>
       </div>
-      
+
       <div className="space-y-4">
         <div>
           <p className={`text-sm font-medium mb-1 ${getColorClass()}`}>
@@ -124,7 +192,7 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({ nodeId, nodes, setNodes
             ID: {selectedNode.id}
           </p>
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium mb-1">
             Name
@@ -136,16 +204,41 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({ nodeId, nodes, setNodes
             className="w-full p-2 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
-        
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Mode
-          </label>
-          <div className="text-sm bg-slate-800 p-2 rounded border border-slate-700">
-            {selectedNode.data.mode === NodeMode.STATIC ? 'Static' : 'Generated'}
+
+        {backendInfo && (
+          <div>
+            <label className="block text-sm font-medium mb-1 flex items-center">
+              <Server className="w-4 h-4 mr-1 text-blue-400" />
+              Backend
+            </label>
+            <div className="text-xs text-slate-400 p-2 bg-slate-800 rounded border border-slate-700 space-y-1">
+              <div className="truncate" title={backendInfo.backendUrl}>{backendInfo.backendUrl}</div>
+              <div>Node: {backendInfo.nodeId}</div>
+              <div className="text-slate-500">{backendInfo.manifest.description}</div>
+            </div>
           </div>
-        </div>
-        
+        )}
+
+        {backendInfo && backendInfo.manifest.parameters.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Parameters
+            </label>
+            <div className="space-y-3">
+              {backendInfo.manifest.parameters.map((param: BackendNodeParameter) => (
+                <div key={param.id}>
+                  {param.type !== BackendParamType.CHECKBOX && (
+                    <label className="block text-xs text-slate-400 mb-1">
+                      {param.label}
+                    </label>
+                  )}
+                  {renderParameterField(param)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-medium mb-1">
             Inputs
@@ -157,7 +250,9 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({ nodeId, nodes, setNodes
                   key={input.id}
                   className="flex items-center justify-between p-2 bg-slate-800 rounded border border-slate-700"
                 >
-                  <span className="text-xs">Input {index + 1}: {connectionEmoticons[input.type as ConnectionType]} {input.type}</span>
+                  <span className="text-xs">
+                    {input.label ?? `Input ${index + 1}`}: {connectionEmoticons[input.type as ConnectionType]} {input.type}
+                  </span>
                   <span
                     className={`text-xs px-1.5 py-0.5 rounded ${
                       input.connected ? 'bg-green-500/20 text-green-300' : 'bg-slate-600 text-slate-300'
@@ -174,528 +269,24 @@ const NodeProperties: React.FC<NodePropertiesProps> = ({ nodeId, nodes, setNodes
             )}
           </div>
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium mb-1">
-            Output
+            {selectedNode.data.mode === NodeMode.GENERATED ? 'Outputs' : 'Output'}
           </label>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between p-2 bg-slate-800 rounded border border-slate-700">
-              <span className="text-xs">Output: {connectionEmoticons[selectedNode.data.output.type as ConnectionType]} {selectedNode.data.output.type}</span>
-            </div>
-            {selectedNode.data.category === 'image' && selectedNode.data.mode === NodeMode.GENERATED && (
-              <select
-                value={selectedNode.data.output.type}
-                onChange={(e) => {
-                  updateNodeData({
-                    output: {
-                      id: selectedNode.data.output.id,
-                      type: e.target.value as ConnectionType
-                    }
-                  });
-                }}
-                className="w-full p-1.5 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          <div className="space-y-1">
+            {(selectedNode.data.outputs ?? [selectedNode.data.output]).map((output: any, index: number) => (
+              <div
+                key={output.id}
+                className="flex items-center justify-between p-2 bg-slate-800 rounded border border-slate-700"
               >
-                <option value={ConnectionType.IMAGE}>Generate as Image</option>
-                <option value={ConnectionType.MASK}>Generate as Mask</option>
-              </select>
-            )}
+                <span className="text-xs">
+                  {output.label ?? `Output ${index + 1}`}: {connectionEmoticons[output.type as ConnectionType]} {output.type}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
-        
-        {/* Generation Settings - Image Node */}
-        {selectedNode.type === NodeType.IMAGE_GENERATED && (
-          <div className="mt-4">
-            <label className="block text-sm font-medium mb-1">
-              Generation Mode
-            </label>
-            <div className="text-sm bg-slate-800 p-2 rounded border border-slate-700 mb-3">
-              {(() => {
-                const imageInputs = selectedNode.data.inputs
-                  .filter((input: any) => input.connected && input.type === 'image')
-                  .length;
-                const textInputs = selectedNode.data.inputs
-                  .filter((input: any) => input.connected && input.type === 'text')
-                  .length;
-                
-                if (imageInputs > 0 && textInputs > 0) return 'Edit (Image + Text)';
-                if (imageInputs > 0) return 'Variations (Image Only)';
-                return 'Generate (Text Only)';
-              })()}
-            </div>
-            
-            <div className="space-y-3">
-              {/* Model Setting */}
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  AI Model
-                </label>
-                <select
-                  value={selectedNode.data.settings?.model || 'dall-e-3'}
-                  onChange={(e) => {
-                    const newModel = e.target.value;
-                    let updatedSettings: any = {
-                      model: newModel
-                    };
-
-                    // Set default settings based on model
-                    if (newModel === 'dall-e-3') {
-                      updatedSettings = {
-                        ...updatedSettings,
-                        size: '1024x1024',
-                        quality: 'hd',
-                        style: 'vivid'
-                      };
-                    } else if (newModel === 'gpt-image-1') {
-                      updatedSettings = {
-                        ...updatedSettings,
-                        size: '1024x1024',
-                        quality: 'high',
-                        background: 'auto',
-                        output_format: 'png',
-                        output_compression: 100,
-                        moderation: 'auto'
-                      };
-                    } else { // dall-e-2
-                      updatedSettings = {
-                        ...updatedSettings,
-                        size: '1024x1024'
-                      };
-                    }
-                    
-                    updateNodeData({
-                      settings: updatedSettings,
-                    });
-                  }}
-                  className="w-full p-1.5 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  {(() => {
-                    const hasImageInput = selectedNode.data.inputs
-                      .some((input: any) => input.connected && input.type === 'image');
-                    
-                    if (hasImageInput) {
-                      // Only DALL·E 2 and GPT-IMAGE-1 support edits
-                      return (
-                        <>
-                          <option value="dall-e-2">DALL·E 2 (Standard)</option>
-                          <option value="gpt-image-1">GPT-IMAGE-1 (Advanced)</option>
-                        </>
-                      );
-                    }
-                    
-                    return (
-                      <>
-                        <option value="gpt-image-1">GPT-IMAGE-1 (Advanced)</option>
-                        <option value="dall-e-3">DALL·E 3 (High creativity)</option>
-                        <option value="dall-e-2">DALL·E 2 (Standard)</option>
-                      </>
-                    );
-                  })()}
-                </select>
-              </div>
-              
-              {/* Size Setting */}
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Image Size
-                </label>
-                <select
-                  value={selectedNode.data.settings?.size || '1024x1024'}
-                  onChange={(e) => {
-                    updateNodeData({
-                      settings: {
-                        ...selectedNode.data.settings,
-                        size: e.target.value,
-                      },
-                    });
-                  }}
-                  className="w-full p-1.5 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  {(() => {
-                    const model = selectedNode.data.settings?.model;
-                    
-                    if (model === 'dall-e-3') {
-                      return (
-                        <>
-                          <option value="1024x1024">Square (1024×1024)</option>
-                          <option value="1792x1024">Landscape (1792×1024)</option>
-                          <option value="1024x1792">Portrait (1024×1792)</option>
-                        </>
-                      );
-                    }
-                    
-                    if (model === 'gpt-image-1') {
-                      return (
-                        <>
-                          <option value="1024x1024">Square (1024×1024)</option>
-                          <option value="1536x1024">Landscape (1536×1024)</option>
-                          <option value="1024x1536">Portrait (1024×1536)</option>
-                        </>
-                      );
-                    }
-                    
-                    // DALL·E 2
-                    return (
-                      <>
-                        <option value="256x256">Small (256×256)</option>
-                        <option value="512x512">Medium (512×512)</option>
-                        <option value="1024x1024">Large (1024×1024)</option>
-                      </>
-                    );
-                  })()}
-                </select>
-              </div>
-              
-              {/* Quality Setting */}
-              {(() => {
-                const model = selectedNode.data.settings?.model;
-                if (!model) return null;
-                
-                let options;
-                if (model === 'dall-e-3') {
-                  options = [
-                    { value: 'standard', label: 'Standard' },
-                    { value: 'hd', label: 'HD' }
-                  ];
-                } else if (model === 'gpt-image-1') {
-                  options = [
-                    { value: 'high', label: 'High' },
-                    { value: 'medium', label: 'Medium' },
-                    { value: 'low', label: 'Low' }
-                  ];
-                } else {
-                  return null; // DALL·E 2 doesn't support quality settings
-                }
-                
-                return (
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">
-                      Quality
-                    </label>
-                    <select
-                      value={selectedNode.data.settings?.quality || options[0].value}
-                      onChange={(e) => {
-                        updateNodeData({
-                          settings: {
-                            ...selectedNode.data.settings,
-                            quality: e.target.value,
-                          },
-                        });
-                      }}
-                      className="w-full p-1.5 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      {options.map(opt => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              })()}
-              
-              {/* Style Setting (DALL·E 3 only) */}
-              {selectedNode.data.settings?.model === 'dall-e-3' && !selectedNode.data.inputs
-                .some((input: any) => input.connected && input.type === 'image') && (
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">
-                    Style
-                  </label>
-                  <select
-                    value={selectedNode.data.settings?.style || 'vivid'}
-                    onChange={(e) => {
-                      updateNodeData({
-                        settings: {
-                          ...selectedNode.data.settings,
-                          style: e.target.value,
-                        },
-                      });
-                    }}
-                    className="w-full p-1.5 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="vivid">Vivid (Hyper-real)</option>
-                    <option value="natural">Natural (More subtle)</option>
-                  </select>
-                </div>
-              )}
-              
-              {/* Background Setting (GPT-4V only) */}
-              {selectedNode.data.settings?.model === 'gpt-image-1' && !selectedNode.data.inputs
-                .some((input: any) => input.connected && input.type === 'image') && (
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">
-                    Background
-                  </label>
-                  <select
-                    value={selectedNode.data.settings?.background || 'auto'}
-                    onChange={(e) => {
-                      updateNodeData({
-                        settings: {
-                          ...selectedNode.data.settings,
-                          background: e.target.value,
-                        },
-                      });
-                    }}
-                    className="w-full p-1.5 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="auto">Auto</option>
-                    <option value="transparent">Transparent</option>
-                    <option value="opaque">Opaque</option>
-                  </select>
-                </div>
-              )}
-              
-              {/* Output Format (GPT-4V only) */}
-              {selectedNode.data.settings?.model === 'gpt-image-1' && !selectedNode.data.inputs
-                .some((input: any) => input.connected && input.type === 'image') && (
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">
-                    Output Format
-                  </label>
-                  <select
-                    value={selectedNode.data.settings?.output_format || 'png'}
-                    onChange={(e) => {
-                      updateNodeData({
-                        settings: {
-                          ...selectedNode.data.settings,
-                          output_format: e.target.value,
-                        },
-                      });
-                    }}
-                    className="w-full p-1.5 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="png">PNG</option>
-                    <option value="jpeg">JPEG</option>
-                    <option value="webp">WebP</option>
-                  </select>
-                </div>
-              )}
-              
-              {/* Compression (GPT-4V only) */}
-              {selectedNode.data.settings?.model === 'gpt-image-1' && !selectedNode.data.inputs
-                .some((input: any) => input.connected && input.type === 'image') && 
-               (selectedNode.data.settings?.output_format === 'webp' || 
-                selectedNode.data.settings?.output_format === 'jpeg') && (
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">
-                    Compression (%)
-                  </label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="100"
-                    value={selectedNode.data.settings?.output_compression || 100}
-                    onChange={(e) => {
-                      updateNodeData({
-                        settings: {
-                          ...selectedNode.data.settings,
-                          output_compression: parseInt(e.target.value),
-                        },
-                      });
-                    }}
-                    className="w-full"
-                  />
-                  <div className="text-xs text-slate-400 text-right">
-                    {selectedNode.data.settings?.output_compression || 100}%
-                  </div>
-                </div>
-              )}
-              
-              {/* Moderation Setting */}
-              {selectedNode.data.settings?.model === 'gpt-image-1' && (
-                <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Content Moderation
-                </label>
-                <select
-                  value={selectedNode.data.settings?.moderation || 'auto'}
-                  onChange={(e) => {
-                    updateNodeData({
-                      settings: {
-                        ...selectedNode.data.settings,
-                        moderation: e.target.value,
-                      },
-                    });
-                  }}
-                  className="w-full p-1.5 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="auto">Auto</option>
-                  <option value="low">Low (Family-friendly)</option>
-                </select>
-              </div>
-              )}
-            </div>
-          </div>
-        )}
-        
-        {/* Generation Settings - Video Node */}
-        {selectedNode.type === NodeType.VIDEO_GENERATED && (
-          <div className="mt-4">
-            <label className="block text-sm font-medium mb-1">
-              Video Generation Settings
-            </label>
-            
-            <div className="space-y-3">
-              {/* Prompt Field */}
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Negative Prompt
-                </label>
-                <textarea
-                  value={selectedNode.data.settings?.negative_prompt || ''}
-                  onChange={(e) => {
-                    updateNodeData({
-                      settings: {
-                        ...selectedNode.data.settings,
-                        negative_prompt: e.target.value,
-                      },
-                    });
-                  }}
-                  placeholder="Specify what NOT to include in the video"
-                  rows={2}
-                  className="w-full p-2 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
-                />
-              </div>
-              
-              {/* Aspect Ratio */}
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Aspect Ratio
-                </label>
-                <select
-                  value={selectedNode.data.settings?.aspect_ratio || '16:9'}
-                  onChange={(e) => {
-                    updateNodeData({
-                      settings: {
-                        ...selectedNode.data.settings,
-                        aspect_ratio: e.target.value,
-                      },
-                    });
-                  }}
-                  className="w-full p-1.5 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="16:9">Landscape (16:9)</option>
-                  <option value="9:16">Portrait (9:16)</option>
-                </select>
-              </div>
-              
-              {/* Resolution */}
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Resolution
-                </label>
-                <select
-                  value={selectedNode.data.settings?.resolution || '720p'}
-                  onChange={(e) => {
-                    updateNodeData({
-                      settings: {
-                        ...selectedNode.data.settings,
-                        resolution: e.target.value,
-                      },
-                    });
-                  }}
-                  className="w-full p-1.5 text-sm bg-slate-800 border border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="720p">720p (HD)</option>
-                  <option value="480p">480p (SD)</option>
-                </select>
-              </div>
-              
-              {/* Number of Frames */}
-              <div>
-                <div className="flex justify-between items-center">
-                  <label className="text-xs text-slate-400">Frames:</label>
-                  <span className="text-xs text-slate-300">{selectedNode.data.settings?.num_frames || 180}</span>
-                </div>
-                <input
-                  type="range"
-                  min="60"
-                  max="240"
-                  step="30"
-                  value={selectedNode.data.settings?.num_frames || 180}
-                  onChange={(e) => {
-                    updateNodeData({
-                      settings: {
-                        ...selectedNode.data.settings,
-                        num_frames: parseInt(e.target.value),
-                      },
-                    });
-                  }}
-                  className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                />
-              </div>
-              
-              {/* CFG Scale */}
-              <div>
-                <div className="flex justify-between items-center">
-                  <label className="text-xs text-slate-400">CFG Scale:</label>
-                  <span className="text-xs text-slate-300">{selectedNode.data.settings?.cfg_scale || 1}</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="20"
-                  step="0.5"
-                  value={selectedNode.data.settings?.cfg_scale || 1}
-                  onChange={(e) => {
-                    updateNodeData({
-                      settings: {
-                        ...selectedNode.data.settings,
-                        cfg_scale: parseFloat(e.target.value),
-                      },
-                    });
-                  }}
-                  className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                />
-              </div>
-              
-              {/* Guidance Scale */}
-              <div>
-                <div className="flex justify-between items-center">
-                  <label className="text-xs text-slate-400">Guidance Scale:</label>
-                  <span className="text-xs text-slate-300">{selectedNode.data.settings?.guidance_scale || 10}</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="20"
-                  step="0.5"
-                  value={selectedNode.data.settings?.guidance_scale || 10}
-                  onChange={(e) => {
-                    updateNodeData({
-                      settings: {
-                        ...selectedNode.data.settings,
-                        guidance_scale: parseFloat(e.target.value),
-                      },
-                    });
-                  }}
-                  className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                />
-              </div>
-              
-              {/* Safety Checker */}
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="safety-checker"
-                  checked={selectedNode.data.settings?.enable_safety_checker || false}
-                  onChange={(e) => {
-                    updateNodeData({
-                      settings: {
-                        ...selectedNode.data.settings,
-                        enable_safety_checker: e.target.checked,
-                      },
-                    });
-                  }}
-                  className="w-4 h-4 rounded border-slate-700 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="safety-checker" className="ml-2 text-xs text-slate-400">
-                  Enable Safety Checker
-                </label>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

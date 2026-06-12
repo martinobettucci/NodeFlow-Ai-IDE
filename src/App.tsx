@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import NodeEditor from './components/NodeEditor';
-import { APIKeyProvider } from './contexts/APIKeyContext';
 import { BackendProvider } from './contexts/BackendContext';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { SettingsModal } from './components/settings/SettingsModal';
@@ -36,18 +35,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Check if API keys are set up
-    const checkAPIKeys = async () => {
-      const openaiKey = localStorage.getItem('openai_api_key');
-      const falKey = localStorage.getItem('fal_ai_key');
-      
-      if (!openaiKey || !falKey) {
-        setShowSettings(true);
-      }
-    };
-    
-    if (!isLoading) {
-      checkAPIKeys();
+    // First run: open the settings so the user can register a backend
+    if (!isLoading && !localStorage.getItem('nodeflow_backends')) {
+      setShowSettings(true);
     }
   }, [isLoading]);
 
@@ -56,23 +46,21 @@ function App() {
   }
 
   return (
-    <APIKeyProvider>
-      <BackendProvider>
-        <ProjectProvider>
-          <Layout
-            onOpenSettings={() => setShowSettings(true)}
-          >
-            <NodeEditor />
-            {showSettings && (
-              <SettingsModal
-                initialTab="api_keys"
-                onClose={() => setShowSettings(false)}
-              />
-            )}
-          </Layout>
-        </ProjectProvider>
-      </BackendProvider>
-    </APIKeyProvider>
+    <BackendProvider>
+      <ProjectProvider>
+        <Layout
+          onOpenSettings={() => setShowSettings(true)}
+        >
+          <NodeEditor />
+          {showSettings && (
+            <SettingsModal
+              initialTab="backends"
+              onClose={() => setShowSettings(false)}
+            />
+          )}
+        </Layout>
+      </ProjectProvider>
+    </BackendProvider>
   );
 }
 

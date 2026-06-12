@@ -3,17 +3,14 @@ import { RotateCcw } from 'lucide-react';
 import BaseNode from './BaseNode';
 import MediaUpload from './MediaUpload';
 
-// Static image node: upload an image that feeds connected nodes.
-const ImageNode: React.FC<any> = ({ data, selected }) => {
+// Static audio node: upload an audio file that feeds connected nodes
+// (e.g. a transcription backend).
+const AudioNode: React.FC<any> = ({ data, selected }) => {
   return (
     <BaseNode data={data} selected={selected}>
       {data.content ? (
         <div className="space-y-2">
-          <img
-            src={data.content}
-            alt={data.label}
-            className="w-full max-h-40 object-contain rounded"
-          />
+          <audio src={data.content} controls className="nodrag w-full" />
           <button
             onClick={() => data.updateNodeData({ content: undefined })}
             className="nodrag flex items-center px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded transition-colors"
@@ -24,8 +21,8 @@ const ImageNode: React.FC<any> = ({ data, selected }) => {
         </div>
       ) : (
         <MediaUpload
-          accept="image/*"
-          prompt="Drop an image or click to upload"
+          accept="audio/*"
+          prompt="Drop an audio file or click to upload"
           onContent={(content) => data.updateNodeData({ content })}
         />
       )}
@@ -33,4 +30,4 @@ const ImageNode: React.FC<any> = ({ data, selected }) => {
   );
 };
 
-export default ImageNode;
+export default AudioNode;

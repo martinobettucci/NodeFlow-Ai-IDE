@@ -1,7 +1,38 @@
 import React from 'react';
 import { NodeType } from '../../types';
-import { Type, Image, Video, Server } from 'lucide-react';
+import { Type, Image, Music, Video, Server } from 'lucide-react';
 import { useBackends } from '../../contexts/BackendContext';
+
+const staticNodes: { type: NodeType; icon: React.ReactNode; label: string; hint: string; border: string }[] = [
+  {
+    type: NodeType.TEXT_STATIC,
+    icon: <Type className="w-4 h-4 mr-1 text-node-text" />,
+    label: 'Text',
+    hint: 'Prompt or text content',
+    border: 'border-node-text',
+  },
+  {
+    type: NodeType.IMAGE_STATIC,
+    icon: <Image className="w-4 h-4 mr-1 text-node-image" />,
+    label: 'Image',
+    hint: 'Upload your own image',
+    border: 'border-node-image',
+  },
+  {
+    type: NodeType.AUDIO_STATIC,
+    icon: <Music className="w-4 h-4 mr-1 text-node-audio" />,
+    label: 'Audio',
+    hint: 'Upload your own audio',
+    border: 'border-node-audio',
+  },
+  {
+    type: NodeType.VIDEO_STATIC,
+    icon: <Video className="w-4 h-4 mr-1 text-node-video" />,
+    label: 'Video',
+    hint: 'Upload your own video',
+    border: 'border-node-video',
+  },
+];
 
 const NodePalette: React.FC = () => {
   const { backends } = useBackends();
@@ -29,97 +60,28 @@ const NodePalette: React.FC = () => {
   return (
     <div className="p-4">
       <h2 className="text-lg font-semibold mb-4">Node Palette</h2>
-      
-      {/* Text Nodes */}
+
+      {/* Static input nodes */}
       <div className="mb-6">
-        <h3 className="text-sm font-medium text-slate-400 mb-2 flex items-center">
-          <Type className="w-4 h-4 mr-1 text-node-text" />
-          Text Nodes
-        </h3>
+        <h3 className="text-sm font-medium text-slate-400 mb-2">Inputs</h3>
         <div className="space-y-2">
-          <div
-            className="p-3 bg-slate-800 border-l-4 border-node-text rounded cursor-grab hover:bg-slate-700 transition-colors"
-            draggable
-            onDragStart={(e) => onDragStart(e, NodeType.TEXT_STATIC)}
-          >
-            <div className="text-sm font-medium">Static Text</div>
-            <div className="text-xs text-slate-400">
-              Manually entered text
+          {staticNodes.map((node) => (
+            <div
+              key={node.type}
+              className={`p-3 bg-slate-800 border-l-4 ${node.border} rounded cursor-grab hover:bg-slate-700 transition-colors`}
+              draggable
+              onDragStart={(e) => onDragStart(e, node.type)}
+            >
+              <div className="text-sm font-medium flex items-center">
+                {node.icon}
+                {node.label}
+              </div>
+              <div className="text-xs text-slate-400">{node.hint}</div>
             </div>
-          </div>
-          <div
-            className="p-3 bg-slate-800 border-l-4 border-node-text rounded cursor-grab hover:bg-slate-700 transition-colors"
-            draggable
-            onDragStart={(e) => onDragStart(e, NodeType.TEXT_GENERATED)}
-          >
-            <div className="text-sm font-medium">Generated Text</div>
-            <div className="text-xs text-slate-400">
-              AI-generated text from prompt
-            </div>
-          </div>
+          ))}
         </div>
       </div>
-      
-      {/* Image Nodes */}
-      <div className="mb-6">
-        <h3 className="text-sm font-medium text-slate-400 mb-2 flex items-center">
-          <Image className="w-4 h-4 mr-1 text-node-image" />
-          Image Nodes
-        </h3>
-        <div className="space-y-2">
-          <div
-            className="p-3 bg-slate-800 border-l-4 border-node-image rounded cursor-grab hover:bg-slate-700 transition-colors"
-            draggable
-            onDragStart={(e) => onDragStart(e, NodeType.IMAGE_STATIC)}
-          >
-            <div className="text-sm font-medium">Static Image</div>
-            <div className="text-xs text-slate-400">
-              Upload your own image
-            </div>
-          </div>
-          <div
-            className="p-3 bg-slate-800 border-l-4 border-node-image rounded cursor-grab hover:bg-slate-700 transition-colors"
-            draggable
-            onDragStart={(e) => onDragStart(e, NodeType.IMAGE_GENERATED)}
-          >
-            <div className="text-sm font-medium">Generated Image</div>
-            <div className="text-xs text-slate-400">
-              AI-generated image from text or image
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Video Nodes */}
-      <div className="mb-6">
-        <h3 className="text-sm font-medium text-slate-400 mb-2 flex items-center">
-          <Video className="w-4 h-4 mr-1 text-node-video" />
-          Video Nodes
-        </h3>
-        <div className="space-y-2">
-          <div
-            className="p-3 bg-slate-800 border-l-4 border-node-video rounded cursor-grab hover:bg-slate-700 transition-colors"
-            draggable
-            onDragStart={(e) => onDragStart(e, NodeType.VIDEO_STATIC)}
-          >
-            <div className="text-sm font-medium">Static Video</div>
-            <div className="text-xs text-slate-400">
-              Upload your own video
-            </div>
-          </div>
-          <div
-            className="p-3 bg-slate-800 border-l-4 border-node-video rounded cursor-grab hover:bg-slate-700 transition-colors"
-            draggable
-            onDragStart={(e) => onDragStart(e, NodeType.VIDEO_GENERATED)}
-          >
-            <div className="text-sm font-medium">Generated Video</div>
-            <div className="text-xs text-slate-400">
-              AI-generated video from text, image, or video
-            </div>
-          </div>
-        </div>
-      </div>
-      
+
       {/* NodeFlow SDK Backend Nodes */}
       {connectedBackends.map((backend) => (
         <div className="mb-6" key={backend.id}>
@@ -147,8 +109,9 @@ const NodePalette: React.FC = () => {
         <p>Drag nodes onto the canvas to create your workflow.</p>
         <p className="mt-2">Connect nodes by dragging from outputs to inputs.</p>
         {connectedBackends.length === 0 && (
-          <p className="mt-2">
-            Connect a NodeFlow SDK backend in Settings &gt; Backends to get more nodes.
+          <p className="mt-2 text-amber-400/80">
+            No backend connected: all processing nodes come from NodeFlow SDK
+            backends. Add one in Settings &gt; Backends.
           </p>
         )}
       </div>

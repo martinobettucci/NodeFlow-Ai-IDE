@@ -13,6 +13,8 @@ export enum BackendIOType {
 export enum BackendParamType {
   CHECKBOX = 'checkbox',
   COMBOBOX = 'combobox',
+  TEXTBOX = 'textbox',
+  NUMBER = 'number',
 }
 
 export enum BackendRunStatus {

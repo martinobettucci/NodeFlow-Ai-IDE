@@ -145,14 +145,15 @@ const BackendNode: React.FC<any> = ({ data, selected }) => {
               <span className="text-slate-400 mr-2 truncate" title={param.id}>
                 {param.label}
               </span>
-              {param.type === BackendParamType.CHECKBOX ? (
+              {param.type === BackendParamType.CHECKBOX && (
                 <input
                   type="checkbox"
                   className="nodrag"
                   checked={Boolean(backendInfo.parameters[param.id])}
                   onChange={(e) => updateParameter(param.id, e.target.checked)}
                 />
-              ) : (
+              )}
+              {param.type === BackendParamType.COMBOBOX && (
                 <select
                   className="nodrag bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-xs"
                   value={String(backendInfo.parameters[param.id] ?? '')}
@@ -164,6 +165,28 @@ const BackendNode: React.FC<any> = ({ data, selected }) => {
                     </option>
                   ))}
                 </select>
+              )}
+              {param.type === BackendParamType.NUMBER && (
+                <input
+                  type="number"
+                  step="any"
+                  className="nodrag w-20 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-xs"
+                  value={String(backendInfo.parameters[param.id] ?? '')}
+                  onChange={(e) =>
+                    updateParameter(
+                      param.id,
+                      e.target.value === '' ? param.default : Number(e.target.value),
+                    )
+                  }
+                />
+              )}
+              {param.type === BackendParamType.TEXTBOX && (
+                <input
+                  type="text"
+                  className="nodrag flex-1 min-w-0 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-xs"
+                  value={String(backendInfo.parameters[param.id] ?? '')}
+                  onChange={(e) => updateParameter(param.id, e.target.value)}
+                />
               )}
             </div>
           ))}

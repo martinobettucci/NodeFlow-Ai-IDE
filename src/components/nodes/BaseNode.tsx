@@ -25,6 +25,7 @@ const BaseNode: React.FC<BaseNodeProps> = ({ data, selected, children }) => {
       [NodeCategory.IMAGE]: 'node-image',
       [NodeCategory.MASK]: 'node-mask',
       [NodeCategory.VIDEO]: 'node-video',
+      [NodeCategory.AUDIO]: 'node-audio',
     };
     
     return clsx(
@@ -42,6 +43,7 @@ const BaseNode: React.FC<BaseNodeProps> = ({ data, selected, children }) => {
       [NodeCategory.IMAGE]: 'text-node-image',
       [NodeCategory.VIDEO]: 'text-node-video',
       [NodeCategory.MASK]: 'text-node-mask',
+      [NodeCategory.AUDIO]: 'text-node-audio',
     };
 
     return textColors[data.category];

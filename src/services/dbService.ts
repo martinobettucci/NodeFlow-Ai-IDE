@@ -86,15 +86,3 @@ export async function saveSettings(settings: UserSettings): Promise<void> {
   await db.put('settings', { ...settings, id: 'user-settings' });
 }
 
-// Local Storage API Keys (for quick access)
-export function saveApiKeys(openaiKey: string, falaiKey: string): void {
-  localStorage.setItem('openai_api_key', openaiKey);
-  localStorage.setItem('fal_ai_key', falaiKey);
-}
-
-export function getApiKeys(): { openai: string; falai: string } {
-  return {
-    openai: localStorage.getItem('openai_api_key') || '',
-    falai: localStorage.getItem('fal_ai_key') || '',
-  };
-}

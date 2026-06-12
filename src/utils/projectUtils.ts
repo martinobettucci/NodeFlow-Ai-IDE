@@ -3,54 +3,27 @@ import { nanoid } from 'nanoid';
 import { saveProject } from '../services/dbService';
 import { BackendIOType, BackendNodeManifest } from '../services/nodeflow/types';
 
-// Create a default node of the specified type
+// Create a static content node of the specified type
 export function createNode(
   type: NodeType,
   position: { x: number; y: number },
 ): NodeData {
   const id = nanoid();
   const nodeCategory = type.split('_')[0] as NodeCategory;
-  const nodeMode = type.split('_')[1] as NodeMode;
-  
-  const inputs: { id: string; type: ConnectionType; maxConnections?: number }[] = [];
-  
-  if (type === NodeType.TEXT_GENERATED) {
-    // Generated text can take text input
-    inputs.push({ id: `${id}-in-1`, type: ConnectionType.TEXT });
-  } else if (type === NodeType.IMAGE_GENERATED) {
-    // Image node can have text input and image input
-    inputs.push({ id: `${id}-in-1`, type: ConnectionType.TEXT, maxConnections: 1 });
-    inputs.push({ id: `${id}-in-2`, type: ConnectionType.IMAGE, maxConnections: Infinity });
-    inputs.push({ id: `${id}-in-3`, type: ConnectionType.MASK, maxConnections: 1 });
-  } else if (type === NodeType.VIDEO_GENERATED) {
-    // Generated video can take text, image, or video input
-    inputs.push({ id: `${id}-in-1`, type: ConnectionType.TEXT, maxConnections: 1 });
-    inputs.push({ id: `${id}-in-2`, type: ConnectionType.IMAGE, maxConnections: 1 });
-    inputs.push({ id: `${id}-in-3`, type: ConnectionType.VIDEO, maxConnections: 1 });
-  }
-  
-  // Determine output type based on node category
   const outputType = nodeCategory.toLowerCase() as ConnectionType;
-  
+
   return {
     id,
     type,
-    label: type === NodeType.IMAGE_GENERATED ? 'Image Generator' : getLabelForNodeType(type),
-    category: nodeCategory as NodeCategory,
-    mode: nodeMode as NodeMode,
+    label: getLabelForNodeType(type),
+    category: nodeCategory,
+    mode: NodeMode.STATIC,
     position,
-    inputs,
+    inputs: [],
     output: {
       id: `${id}-out`,
       type: outputType,
     },
-    settings: type === NodeType.IMAGE_GENERATED ? {
-      model: 'dall-e-3',
-      size: '1024x1024',
-      quality: 'hd',
-      style: 'vivid',
-      moderation: 'auto'
-    } : undefined,
     generationStatus: 'idle',
   };
 }
@@ -106,9 +79,13 @@ export function createBackendNode(
 
   const primaryOutputType = outputs[0]?.type ?? ConnectionType.TEXT;
   const category = (
-    [ConnectionType.TEXT, ConnectionType.IMAGE, ConnectionType.VIDEO, ConnectionType.MASK].includes(
-      primaryOutputType,
-    )
+    [
+      ConnectionType.TEXT,
+      ConnectionType.IMAGE,
+      ConnectionType.AUDIO,
+      ConnectionType.VIDEO,
+      ConnectionType.MASK,
+    ].includes(primaryOutputType)
       ? (primaryOutputType as string)
       : NodeCategory.TEXT
   ) as NodeCategory;
@@ -138,17 +115,13 @@ export function createBackendNode(
 function getLabelForNodeType(type: NodeType): string {
   switch (type) {
     case NodeType.TEXT_STATIC:
-      return 'Static Text';
-    case NodeType.TEXT_GENERATED:
-      return 'Generated Text';
+      return 'Text';
     case NodeType.IMAGE_STATIC:
-      return 'Static Image';
-    case NodeType.IMAGE_GENERATED:
-      return 'Generated Image';
+      return 'Image';
+    case NodeType.AUDIO_STATIC:
+      return 'Audio';
     case NodeType.VIDEO_STATIC:
-      return 'Static Video';
-    case NodeType.VIDEO_GENERATED:
-      return 'Generated Video';
+      return 'Video';
     default:
       return 'Unknown';
   }
@@ -164,7 +137,7 @@ export async function createDefaultProject(): Promise<string> {
     nodes: [],
     connections: [],
   };
-  
+
   return saveProject(defaultProject);
 }
 
@@ -177,7 +150,7 @@ export async function cloneProject(project: Project): Promise<string> {
     created: Date.now(),
     updated: Date.now(),
   };
-  
+
   return saveProject(clonedProject);
 }
 

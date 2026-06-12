@@ -13,12 +13,16 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
+import { Play } from 'lucide-react';
+
 import { useProject } from '../contexts/ProjectContext';
 import { useBackends } from '../contexts/BackendContext';
-import { NodeType, ConnectionType } from '../types';
+import { NodeType, ConnectionType, NodeData } from '../types';
 import { createNode, createBackendNode } from '../utils/projectUtils';
+import { runWorkflow } from '../services/nodeflow/workflow';
 import TextNode from './nodes/TextNode';
 import ImageNode from './nodes/ImageNode';
+import AudioNode from './nodes/AudioNode';
 import VideoNode from './nodes/VideoNode';
 import BackendNode from './nodes/BackendNode';
 import CustomEdge from './nodes/CustomEdge';
@@ -27,7 +31,9 @@ import NodeProperties from './sidebar/NodeProperties';
 
 const NodeEditor: React.FC = () => {
   const { currentProject, updateProject } = useProject();
-  const { backends } = useBackends();
+  const { backends, getClient } = useBackends();
+  const [isRunningWorkflow, setIsRunningWorkflow] = useState(false);
+  const [workflowStatus, setWorkflowStatus] = useState<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
@@ -38,11 +44,9 @@ const NodeEditor: React.FC = () => {
   // Memoize node types and edge types
   const nodeTypes = useMemo<NodeTypes>(() => ({
     [NodeType.TEXT_STATIC]: TextNode,
-    [NodeType.TEXT_GENERATED]: TextNode,
     [NodeType.IMAGE_STATIC]: ImageNode,
-    [NodeType.IMAGE_GENERATED]: ImageNode,
+    [NodeType.AUDIO_STATIC]: AudioNode,
     [NodeType.VIDEO_STATIC]: VideoNode,
-    [NodeType.VIDEO_GENERATED]: VideoNode,
     [NodeType.BACKEND]: BackendNode,
   }), []);
   
@@ -244,6 +248,60 @@ const NodeEditor: React.FC = () => {
       return () => clearTimeout(timeoutId);
     }
   }, [nodes, edges, saveChanges]);
+
+  // Run the whole workflow: every backend node, in topological order
+  const handleRunWorkflow = useCallback(async () => {
+    if (isRunningWorkflow) return;
+
+    const resolveClient = (node: NodeData) => {
+      if (!node.backend) return undefined;
+      const registered =
+        backends.find(b => b.id === node.backend?.backendId) ??
+        backends.find(b => b.url === node.backend?.backendUrl);
+      return registered?.status === 'connected' ? getClient(registered.id) : undefined;
+    };
+
+    setIsRunningWorkflow(true);
+    setWorkflowStatus('Running workflow...');
+    try {
+      const result = await runWorkflow(
+        nodes.map(node => node.data as NodeData),
+        edges.map(edge => ({
+          source: edge.source,
+          sourceHandle: edge.sourceHandle || '',
+          target: edge.target,
+          targetHandle: edge.targetHandle || '',
+        })),
+        {
+          getClient: resolveClient,
+          updateNodeData,
+          onProgress: (nodeId, message) => {
+            const label = nodes.find(n => n.id === nodeId)?.data?.label ?? nodeId;
+            setWorkflowStatus(`${label}: ${message}`);
+          },
+        }
+      );
+
+      if (result.error) {
+        setWorkflowStatus(`Workflow failed: ${result.error}`);
+      } else if (result.executed === 0) {
+        setWorkflowStatus(
+          result.skipped > 0
+            ? 'No backend reachable: connect backends in Settings > Backends'
+            : 'Nothing to run: add backend nodes to the canvas'
+        );
+      } else {
+        setWorkflowStatus(
+          `Workflow finished: ${result.executed} node${result.executed === 1 ? '' : 's'} executed` +
+          (result.skipped > 0 ? `, ${result.skipped} skipped (backend offline)` : '')
+        );
+      }
+    } catch (error) {
+      setWorkflowStatus(error instanceof Error ? error.message : 'Workflow failed');
+    } finally {
+      setIsRunningWorkflow(false);
+    }
+  }, [isRunningWorkflow, nodes, edges, backends, getClient, updateNodeData]);
 
   // Handle node selection
   const onNodeClick = useCallback((_: React.MouseEvent, node: any) => {
@@ -457,7 +515,26 @@ const NodeEditor: React.FC = () => {
       </div>
       
       {/* Main Editor */}
-      <div className="flex-1 flex flex-col h-full">
+      <div className="flex-1 flex flex-col h-full relative">
+        {/* Workflow toolbar */}
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center space-x-3">
+          <button
+            onClick={handleRunWorkflow}
+            disabled={isRunningWorkflow}
+            className="flex items-center space-x-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            <Play className="w-4 h-4" />
+            <span>{isRunningWorkflow ? 'Running...' : 'Run Workflow'}</span>
+          </button>
+          {workflowStatus && (
+            <div
+              className="max-w-md truncate px-3 py-1.5 text-xs bg-slate-800/90 border border-slate-700 rounded-lg shadow-lg text-slate-300"
+              title={workflowStatus}
+            >
+              {workflowStatus}
+            </div>
+          )}
+        </div>
         <div ref={reactFlowWrapper} className="flex-1">
           <ReactFlow
             nodes={nodes}

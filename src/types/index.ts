@@ -1,19 +1,19 @@
 import { BackendNodeManifest } from '../services/nodeflow/types';
 
-// Node types
+// Node types: static content nodes feed data into NodeFlow SDK backend nodes,
+// which perform all processing/generation server-side.
 export enum NodeType {
   TEXT_STATIC = 'text_static',
-  TEXT_GENERATED = 'text_generated',
   IMAGE_STATIC = 'image_static',
-  IMAGE_GENERATED = 'image_generated',
+  AUDIO_STATIC = 'audio_static',
   VIDEO_STATIC = 'video_static',
-  VIDEO_GENERATED = 'video_generated',
   BACKEND = 'backend'
 }
 
 export enum NodeCategory {
   TEXT = 'text',
   IMAGE = 'image',
+  AUDIO = 'audio',
   VIDEO = 'video',
   MASK = 'mask'
 }
@@ -44,7 +44,7 @@ export interface NodeData {
     width?: number;
     height?: number;
   };
-  content?: string; // Text content, image URL or base64, video URL or base64
+  content?: string; // Text content, or media as data URL
   inputs: {
     id: string;
     type: ConnectionType;
@@ -57,35 +57,8 @@ export interface NodeData {
     id: string;
     type: ConnectionType;
   };
-  settings?: {
-    // Image generation settings
-    model?: 'dall-e-2' | 'dall-e-3' | 'gpt-image-1';
-    size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792' | '1536x1024' | '1024x1536';
-    quality?: 'standard' | 'hd' | 'low' | 'medium' | 'high';
-    style?: 'vivid' | 'natural';
-    background?: 'auto' | 'transparent' | 'opaque';
-    output_format?: 'png' | 'jpeg' | 'webp';
-    output_compression?: number;
-    moderation?: 'auto' | 'low';
-    
-    // Video generation settings
-    negative_prompt?: string;
-    aspect_ratio?: '16:9' | '9:16';
-    resolution?: '720p' | '480p';
-    cfg_scale?: number;
-    guidance_scale?: number;
-    num_frames?: number;
-    enable_safety_checker?: boolean;
-    seed?: number;
-    end_image_url?: string;
-    end_image_uploaded_url?: string;
-    strength?: number;
-  };
   generationStatus?: 'idle' | 'generating' | 'success' | 'error';
   generationError?: string;
-  generationSeed?: number;
-  uploaded_url?: string;
-  last_uploaded_content?: string;
 
   // NodeFlow SDK backend nodes
   backend?: {
@@ -125,43 +98,7 @@ export interface Project {
   connections: Connection[];
 }
 
-// OpenAI API types
-export interface OpenAIImageResponse {
-  created: number;
-  data: {
-    url?: string;
-    b64_json?: string;
-  }[];
-  usage?: {
-    input_tokens_details?: {
-      text_tokens?: number;
-      image_tokens?: number;
-    };
-    output_tokens?: number;
-  };
-}
-
-// FAL.AI API types
-export interface FalVideoResponse {
-  data: {
-    video?: {
-      url: string;
-    };
-    video_url?: string;
-    b64_json?: string;
-    seed?: number;
-  };
-  requestId: string;
-}
-
 // Settings
-export interface APIKeys {
-  openai: string;
-  falai: string;
-}
-
 export interface UserSettings {
-  apiKeys: APIKeys;
   theme: 'dark' | 'light';
-  quality: 'low' | 'medium' | 'high';
 }

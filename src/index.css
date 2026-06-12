@@ -27,6 +27,7 @@
   --node-image: 142 72% 29%;
   --node-video: 329 86% 56%;
   --node-mask: 262 83% 58%;
+  --node-audio: 188 86% 53%;
   --node-gen: 217 91% 60%;
   --node-static: 50 10% 60%;
   
@@ -199,6 +200,11 @@ body {
   background-color: hsl(var(--node-mask) / 0.1);
 }
 
+.node-audio {
+  border-color: hsl(var(--node-audio));
+  background-color: hsl(var(--node-audio) / 0.1);
+}
+
 .text-node-text {
   color: hsl(var(--node-text));
 }
@@ -215,8 +221,28 @@ body {
   color: hsl(var(--node-mask));
 }
 
-.text-node-mask {
-  color: hsl(var(--node-mask));
+.text-node-audio {
+  color: hsl(var(--node-audio));
+}
+
+.border-node-text {
+  border-color: hsl(var(--node-text));
+}
+
+.border-node-image {
+  border-color: hsl(var(--node-image));
+}
+
+.border-node-video {
+  border-color: hsl(var(--node-video));
+}
+
+.border-node-mask {
+  border-color: hsl(var(--node-mask));
+}
+
+.border-node-audio {
+  border-color: hsl(var(--node-audio));
 }
 
 .bg-node-text {
