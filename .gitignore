@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 *.tsbuildinfo
+
+# Playwright recordings & artifacts
+e2e/videos/
+test-results/
+playwright-report/

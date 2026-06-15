@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "e2e:backend": "tsx scripts/e2e-backend.ts",
-    "e2e:workflow": "tsx scripts/e2e-workflow.ts"
+    "e2e:workflow": "tsx scripts/e2e-workflow.ts",
+    "test:e2e": "playwright test",
+    "e2e:panorama": "node e2e/record-panorama.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.0",
@@ -23,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@playwright/test": "^1.61.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
